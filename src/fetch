@@ -1,0 +1,29 @@
+
+// Generic function to fetch an integer from a batch
+fn fetch_integer<T>(batch: &Cursor, row_index: usize, column_index: usize) -> Result<T, FetchError>
+where
+    T: TryFrom<[u8; 8], Error = FetchError> + Copy,
+{
+    let bytes: &[u8] = batch.at(column_index, row_index)
+        .ok_or_else(|| FetchError(format!("Failed to fetch data from column {}", column_index)))?;
+
+    let byte_len = std::mem::size_of::<T>();
+    if bytes.len() < byte_len {
+        return Err(FetchError("Insufficient bytes for integer conversion".to_string()));
+    }
+
+    let mut arr = [0u8; 8]; // Maximum size for u64
+    arr[0..byte_len].copy_from_slice(&bytes[0..byte_len]);
+    
+    T::try_from(arr).map_err(|_| FetchError("Failed to convert bytes to integer".to_string()))
+}
+
+// Function to fetch a u32 field
+fn fetch_32(batch: &Cursor, row_index: usize, column_index: usize) -> Result<u32> {
+    fetch_integer(batch, row_index, column_index) // Assuming age is in column index 1
+}
+
+// Function to fetch a u64 field
+fn fetch_64(batch: &Cursor, row_index: usize,column_index: usize) -> Result<u64> {
+    fetch_integer(batch, row_index, column_index) // Assuming salary is in column index 2
+}
